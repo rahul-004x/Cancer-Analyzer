@@ -17,53 +17,104 @@ class DataProcessor:
         self.imputer = SimpleImputer(strategy='mean')
 
     def load_data(self, file_path):
-        """Load data and perform initial cleaning"""
-        print("Loading data from:", file_path)
-        self.data = pd.read_csv(file_path)
+        """Load data from a CSV file and perform initial cleaning"""
+        try:
+            print("Loading data from:", file_path)
+            self.data = pd.read_csv(file_path)
+            return self._clean_data()
+        except Exception as e:
+            print(f"Error loading data: {str(e)}")
+            return None
 
-        # Remove unnamed columns
-        unnamed_cols = [col for col in self.data.columns if 'Unnamed' in col]
-        if unnamed_cols:
-            self.data = self.data.drop(columns=unnamed_cols)
+    def load_data_from_df(self, df):
+        """Load data from a pandas DataFrame and perform initial cleaning"""
+        try:
+            print("Loading data from DataFrame")
+            self.data = df.copy()
+            return self._clean_data()
+        except Exception as e:
+            print(f"Error loading DataFrame: {str(e)}")
+            return None
 
-        print("Data shape after cleaning:", self.data.shape)
-        return self.data
+    def _clean_data(self):
+        """Clean the loaded data"""
+        if self.data is None:
+            return None
+
+        try:
+            # Remove unnamed columns
+            unnamed_cols = [col for col in self.data.columns if 'Unnamed' in col]
+            if unnamed_cols:
+                self.data = self.data.drop(columns=unnamed_cols)
+
+            # Verify required columns
+            required_cols = ['diagnosis']
+            if not all(col in self.data.columns for col in required_cols):
+                raise ValueError("Missing required columns in the dataset")
+
+            print("Data shape after cleaning:", self.data.shape)
+            return self.data
+
+        except Exception as e:
+            print(f"Error cleaning data: {str(e)}")
+            self.data = None
+            return None
 
     def preprocess_data(self):
         """Preprocess data including handling missing values"""
+        if self.data is None:
+            raise ValueError("No data loaded. Please load data first.")
+
         print("Starting data preprocessing...")
+        try:
+            # Drop ID column and convert diagnosis to binary
+            X = self.data.drop(['id', 'diagnosis'], axis=1)
+            y = (self.data['diagnosis'] == 'M').astype(int)
 
-        # Drop ID column and convert diagnosis to binary
-        X = self.data.drop(['id', 'diagnosis'], axis=1)
-        y = (self.data['diagnosis'] == 'M').astype(int)
+            # Handle missing values
+            print("Handling missing values...")
+            print("Shape before imputation:", X.shape)
+            X_imputed = self.imputer.fit_transform(X)
 
-        # Handle missing values
-        print("Handling missing values...")
-        print("Shape before imputation:", X.shape)
-        X_imputed = self.imputer.fit_transform(X)
+            # Scale features
+            print("Scaling features...")
+            X_scaled = self.scaler.fit_transform(X_imputed)
+            self.X = pd.DataFrame(X_scaled, columns=X.columns)
+            self.y = y
 
-        # Scale features
-        print("Scaling features...")
-        X_scaled = self.scaler.fit_transform(X_imputed)
-        self.X = pd.DataFrame(X_scaled, columns=X.columns)
-        self.y = y
+            # Split data
+            print("Splitting data into train and test sets...")
+            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+                self.X, self.y, test_size=0.2, random_state=42
+            )
 
-        # Split data
-        print("Splitting data into train and test sets...")
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.X, self.y, test_size=0.2, random_state=42
-        )
+            print("Data preprocessing completed.")
+            print(f"Training set shape: {self.X_train.shape}")
+            print(f"Test set shape: {self.X_test.shape}")
 
-        print("Data preprocessing completed.")
-        print(f"Training set shape: {self.X_train.shape}")
-        print(f"Test set shape: {self.X_test.shape}")
+            return self.X_train, self.X_test, self.y_train, self.y_test
 
-        return self.X_train, self.X_test, self.y_train, self.y_test
+        except Exception as e:
+            print(f"Error preprocessing data: {str(e)}")
+            raise
 
     def get_feature_stats(self):
         """Get basic statistics of the dataset"""
-        return self.data.describe()
+        if self.data is not None:
+            numeric_cols = self.data.select_dtypes(include=[np.number]).columns
+            return self.data[numeric_cols].describe()
+        return None
 
     def get_correlation_matrix(self):
         """Get correlation matrix of features"""
         return self.X.corr() if self.X is not None else None
+
+    def validate_input_data(self, input_data):
+        """Validate input data for predictions"""
+        if not isinstance(input_data, pd.DataFrame):
+            raise ValueError("Input must be a pandas DataFrame")
+
+        if not all(col in input_data.columns for col in self.X.columns):
+            raise ValueError("Input data missing required features")
+
+        return True
