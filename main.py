@@ -49,15 +49,19 @@ if page == "Data Analysis":
     uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
     use_example_file = st.checkbox('Use example file', value=True)
 
+    data_loaded = False
+
     if uploaded_file is not None:
         data = process_uploaded_file(uploaded_file)
         if data is not None:
             dp.load_data_from_df(data)
             st.success("File successfully uploaded and processed!")
+            data_loaded = True
     elif use_example_file:
         data = dp.load_data("attached_assets/Cancer_Data.csv")
+        data_loaded = True
 
-    if dp.data is not None:
+    if data_loaded and dp.data is not None:
         # Dataset Info
         st.header("Dataset Information")
         col1, col2 = st.columns(2)
@@ -68,52 +72,75 @@ if page == "Data Analysis":
 
         # Basic statistics
         st.header("Dataset Statistics")
-        st.write(dp.get_feature_stats())
+        stats = dp.get_feature_stats()
+        if stats is not None:
+            st.write(stats)
 
-        # Correlation matrix
-        st.header("Feature Correlations")
-        corr_matrix = dp.get_correlation_matrix()
-        if corr_matrix is not None:
-            st.plotly_chart(viz.plot_correlation_heatmap(corr_matrix))
+        # Process data for visualizations
+        if st.button("Process Data for Visualization"):
+            with st.spinner("Processing data..."):
+                try:
+                    X_train, X_test, y_train, y_test = dp.preprocess_data()
+                    st.success("Data processed successfully!")
+                except Exception as e:
+                    st.error(f"Error processing data: {str(e)}")
+                    st.stop()
 
-        # Data distribution
-        st.header("Feature Distributions")
-        if dp.X is not None and len(dp.X.columns) > 0:
-            col1, col2 = st.columns(2)
-            with col1:
-                selected_feature = st.selectbox("Select Feature", dp.X.columns)
-            with col2:
-                chart_type = st.selectbox("Select Chart Type", ["Histogram", "Box Plot", "Violin Plot"])
+        if dp.X is not None:
+            # Correlation matrix
+            st.header("Feature Correlations")
+            corr_matrix = dp.get_correlation_matrix()
+            if corr_matrix is not None:
+                try:
+                    st.plotly_chart(viz.plot_correlation_heatmap(corr_matrix))
+                except Exception as e:
+                    st.error(f"Error plotting correlation matrix: {str(e)}")
 
-            if chart_type == "Histogram":
-                fig = px.histogram(
-                    dp.X,
-                    x=selected_feature,
-                    title=f'Distribution of {selected_feature}',
-                    template='plotly_white'
-                )
-            elif chart_type == "Box Plot":
-                fig = px.box(
-                    dp.X,
-                    y=selected_feature,
-                    title=f'Box Plot of {selected_feature}',
-                    template='plotly_white'
-                )
-            else:  # Violin Plot
-                fig = px.violin(
-                    dp.X,
-                    y=selected_feature,
-                    title=f'Violin Plot of {selected_feature}',
-                    template='plotly_white'
-                )
-            st.plotly_chart(fig)
+            # Data distribution
+            st.header("Feature Distributions")
+            feature_names = dp.get_feature_names()
+            if feature_names:
+                col1, col2 = st.columns(2)
+                with col1:
+                    selected_feature = st.selectbox("Select Feature", feature_names)
+                with col2:
+                    chart_type = st.selectbox("Select Chart Type", ["Histogram", "Box Plot", "Violin Plot"])
+
+                try:
+                    if chart_type == "Histogram":
+                        fig = px.histogram(
+                            dp.X,
+                            x=selected_feature,
+                            title=f'Distribution of {selected_feature}',
+                            template='plotly_white'
+                        )
+                    elif chart_type == "Box Plot":
+                        fig = px.box(
+                            dp.X,
+                            y=selected_feature,
+                            title=f'Box Plot of {selected_feature}',
+                            template='plotly_white'
+                        )
+                    else:  # Violin Plot
+                        fig = px.violin(
+                            dp.X,
+                            y=selected_feature,
+                            title=f'Violin Plot of {selected_feature}',
+                            template='plotly_white'
+                        )
+                    st.plotly_chart(fig)
+                except Exception as e:
+                    st.error(f"Error creating visualization: {str(e)}")
 
             # Train models if data is processed
             if st.button("Train Models"):
                 with st.spinner("Training models..."):
-                    X_train, X_test, y_train, y_test = dp.preprocess_data()
-                    mt.train_models(X_train, X_test, y_train, y_test)
-                st.success("Models trained successfully!")
+                    try:
+                        X_train, X_test, y_train, y_test = dp.preprocess_data()
+                        mt.train_models(X_train, X_test, y_train, y_test)
+                        st.success("Models trained successfully!")
+                    except Exception as e:
+                        st.error(f"Error training models: {str(e)}")
 
 # Model Performance Page
 elif page == "Model Performance":

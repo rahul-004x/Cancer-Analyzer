@@ -52,6 +52,10 @@ class DataProcessor:
             if not all(col in self.data.columns for col in required_cols):
                 raise ValueError("Missing required columns in the dataset")
 
+            # Initialize features for visualization
+            self.X = self.data.drop(['id', 'diagnosis'], axis=1)
+            self.y = (self.data['diagnosis'] == 'M').astype(int)
+
             print("Data shape after cleaning:", self.data.shape)
             return self.data
 
@@ -67,20 +71,15 @@ class DataProcessor:
 
         print("Starting data preprocessing...")
         try:
-            # Drop ID column and convert diagnosis to binary
-            X = self.data.drop(['id', 'diagnosis'], axis=1)
-            y = (self.data['diagnosis'] == 'M').astype(int)
-
             # Handle missing values
             print("Handling missing values...")
-            print("Shape before imputation:", X.shape)
-            X_imputed = self.imputer.fit_transform(X)
+            print("Shape before imputation:", self.X.shape)
+            X_imputed = self.imputer.fit_transform(self.X)
 
             # Scale features
             print("Scaling features...")
             X_scaled = self.scaler.fit_transform(X_imputed)
-            self.X = pd.DataFrame(X_scaled, columns=X.columns)
-            self.y = y
+            self.X = pd.DataFrame(X_scaled, columns=self.X.columns)
 
             # Split data
             print("Splitting data into train and test sets...")
@@ -107,7 +106,13 @@ class DataProcessor:
 
     def get_correlation_matrix(self):
         """Get correlation matrix of features"""
-        return self.X.corr() if self.X is not None else None
+        if self.X is not None:
+            try:
+                return self.X.corr()
+            except Exception as e:
+                print(f"Error calculating correlation matrix: {str(e)}")
+                return None
+        return None
 
     def validate_input_data(self, input_data):
         """Validate input data for predictions"""
@@ -118,3 +123,7 @@ class DataProcessor:
             raise ValueError("Input data missing required features")
 
         return True
+
+    def get_feature_names(self):
+        """Get list of feature names"""
+        return list(self.X.columns) if self.X is not None else []
