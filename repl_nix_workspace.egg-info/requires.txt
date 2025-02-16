@@ -1,0 +1,8 @@
+matplotlib>=3.10.0
+numpy>=2.2.3
+pandas>=2.2.3
+plotly>=6.0.0
+scikit-learn>=1.6.1
+seaborn>=0.13.2
+streamlit>=1.42.0
+trafilatura>=2.0.0

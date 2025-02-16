@@ -19,9 +19,9 @@ class ModelTrainer:
         for name, model in self.models.items():
             try:
                 print(f"\nTraining {name}...")
-                # Check for NaN values
-                if np.isnan(X_train).any():
-                    raise ValueError(f"Training data contains NaN values")
+                # Check for NaN values using DataFrame.isna() method
+                if X_train.isna().any().any():
+                    raise ValueError("Training data contains NaN values")
 
                 # Train model
                 model.fit(X_train, y_train)
