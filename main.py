@@ -173,36 +173,66 @@ elif page == "Model Performance":
 # Prediction Page
 else:
     st.title("Cancer Prediction")
-
     if not mt.trained_models:
         st.warning("Please train the models first in the Data Analysis page.")
     else:
         st.write("Enter patient measurements to get prediction")
-
-        # Create input fields for all features
-        input_features = {}
-        if dp.X is not None:
-            cols = st.columns(3)
-            for idx, feature in enumerate(dp.X.columns):
-                with cols[idx % 3]:
-                    input_features[feature] = st.number_input(
-                        feature,
-                        value=float(dp.X[feature].mean()),
-                        format="%.6f"
-                    )
-
-            if st.button("Predict"):
-                # Prepare input data
-                input_df = pd.DataFrame([input_features])
-
-                # Get predictions
-                predictions = mt.predict(input_df)
-
-                # Display results
-                for model_name, pred_dict in predictions.items():
-                    st.write(f"### {model_name} Prediction")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Diagnosis", pred_dict['prediction'])
-                    with col2:
-                        st.metric("Confidence", f"{pred_dict['probability']:.2%}")
+        
+        # Choose input method
+        input_method = st.radio("Input Method", ["Manual Entry", "CSV Upload"])
+        
+        if input_method == "CSV Upload":
+            patient_file = st.file_uploader("Upload Patient CSV", type=["csv"])
+            if patient_file is not None:
+                try:
+                    patient_df = pd.read_csv(patient_file)
+                    expected_features = dp.get_feature_names()
+                    dp.validate_input_data(patient_df[expected_features])
+                    input_df = patient_df[expected_features].iloc[[0]]
+                    st.success("Patient measurements loaded from CSV.")
+                except Exception as e:
+                    st.error(f"Error processing patient CSV: {str(e)}")
+                    input_df = None
+            else:
+                st.info("Please upload a CSV file with patient measurements.")
+                input_df = None
+        else:
+            # Manual Entry without auto-filled values
+            input_features = {}
+            if dp.X is not None:
+                cols = st.columns(3)
+                for idx, feature in enumerate(dp.X.columns):
+                    with cols[idx % 3]:
+                        val_str = st.text_input(feature, placeholder=f"Enter {feature}", key=feature)
+                        input_features[feature] = float(val_str) if val_str.strip() != "" else None
+            # Validate that all fields have been filled:
+            if any(value is None for value in input_features.values()):
+                st.error("Please fill all the fields with valid numeric values.")
+                st.stop()
+            input_df = pd.DataFrame([input_features])
+        
+        if input_df is not None and st.button("Predict"):
+            predictions = mt.predict(input_df)
+            for model_name, pred_dict in predictions.items():
+                st.write(f"### {model_name} Prediction")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Diagnosis", pred_dict['prediction'])
+                with col2:
+                    st.metric("Confidence", f"{pred_dict['probability']:.2%}")
+            
+            # --- Display Spider Chart if input data includes all required keys ---
+            input_data = input_df.to_dict(orient='records')[0]
+            required_keys = [
+                'area_mean', 'perimeter_mean', 'radius_mean', 'texture_mean', 'smoothness_mean',
+                'concavity_mean', 'concave_points_mean', 'symmetry_mean', 'fractal_dimension_mean',
+                'area_se', 'perimeter_se', 'radius_se', 'texture_se', 'smoothness_se',
+                'concavity_se', 'concave_points_se', 'symmetry_se', 'fractal_dimension_se',
+                'area_worst', 'perimeter_worst', 'radius_worst', 'texture_worst', 'smoothness_worst',
+                'concavity_worst', 'concave_points_worst', 'symmetry_worst', 'fractal_dimension_worst'
+            ]
+            if all(key in input_data for key in required_keys):
+                spider_chart = viz.create_spider_chart(input_data)
+                st.plotly_chart(spider_chart)
+            else:
+                st.info("Spider chart not available: input data does not include all required metrics for spider chart.")
