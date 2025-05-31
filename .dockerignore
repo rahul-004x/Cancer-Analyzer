@@ -1,0 +1,50 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+repl_nix_workspace.egg-info/
+
+# Lock files that might conflict
+uv.lock
+
+# Logs
+*.log
+
+# Test files
+test/
+tests/
+*_test.py
+test_*.py
