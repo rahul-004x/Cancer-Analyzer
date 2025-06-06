@@ -2,6 +2,10 @@
 
 A data-driven tool for analyzing breast cancer datasets, providing insights through statistical analysis and visualization.
 
+## 🚀 Live Demo
+
+Try the application online: **[https://cancer-analyzer.streamlit.app/](https://cancer-analyzer.streamlit.app/)**
+
 ## Overview
 
 Cancer-Analyzer is designed to help researchers and healthcare professionals analyze breast cancer-related data. This tool processes datasets to identify patterns, correlations, and potential indicators that could assist in cancer research and diagnosis.
